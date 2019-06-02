@@ -1,0 +1,26 @@
+.form-group form {
+	display: inline-block;
+}
+
+#editor-container {
+	position: fixed;
+	top: 100px;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	border: 1px solid black;
+}
+
+#editor-container textarea {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	border: 0;
+	padding: 10px;
+	font-family: Courier New, monospace;
+	font-size: 11px;
+}
+
+.ui-dragover {
+	outline: 2px solid blue;
+}

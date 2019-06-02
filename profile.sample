@@ -1,0 +1,15 @@
+### standard config
+export PORT=3000
+export WEBDAV="/webdav"
+
+### use local pouchdb server for the content repo
+export POUCHDB="http://localhost:$PORT/db/contentdb"
+export POUCHDB_SERVER="/tmp/"
+
+### enable to connect to the DropBox
+#export DROPBOX_TOKEN="<dropbox API key>"
+
+### enable to connect to the GitHub repo
+#export GITHUB_USER="user"
+#export GITHUB_PASSWORD="password"
+#export GITHUB_REPO="repo"

@@ -1,0 +1,10 @@
+CACHE MANIFEST
+# rev 664 - 2019-05-29T09:42:58.583Z
+
+CACHE:
+app.js
+../../dist/r3elib.js
+../../dist/templates.js
+
+NETWORK:
+*

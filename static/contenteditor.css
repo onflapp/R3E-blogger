@@ -1,0 +1,14 @@
+/**/
+
+[data-content] {
+	outline: 1px solid red;
+}
+[data-field] {
+	outline: 1px solid red;
+}
+
+#mce-menubar {
+  background: green;
+  position: fixed;
+  top: 0px;
+}

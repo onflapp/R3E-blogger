@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+
+  <title>create page</title>
+
+  <link href="{{C.BOOTSTRAP_CSS}}" rel="stylesheet">
+</head>
+
+<body>
+
+  <div role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <a class="close" href="{{R.PATH}}{{C.X}}res-list"><span aria-hidden="true">&times;</span></a>
+          <h4 class="modal-title">Create New Blog Page</h4>
+        </div>
+        <div class="modal-body">
+
+
+          <ol class="breadcrumb">
+            <li class="active">HOME</li>
+            {{#include "." "parents"}}
+              <li class="active">{{name}}</li>
+            {{/include}}
+            <li>{{R.NAME}}</li>
+          </ol>
+
+          <h5>Resource Node xxxxx</h5>
+          <form class="form-inline" method="post" action="{{R.PATH_APPEND}}{:name}">
+            <div class="form-group">
+              <select class="form-control" name="_rt">
+                <option value="blog/page">Blog Topic</option>
+              </select>
+
+              <input class="form-control" name=":name|newUUID" value="" autocomplete="off" placeholder="name">
+              <input type="hidden" name=":forward" value="{{R.PATH}}{{C.X}}res-list">
+              <input type="hidden" name="_st" value="web/page">
+              <button class="form-control btn btn-success" type="submit">create</button>
+            </div>
+          </form>
+
+        </div>
+        <div class="modal-footer">
+          <a class="btn btn-default" href="{{R.PATH}}{{C.X}}res-list">Cancel</a>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+
+</body>
+
+</html>
