@@ -122,7 +122,8 @@ app.post('/*', function(req, res) {
 });
 
 app.listen(port, function() {
-	console.log('app listening on port '+port);
+	console.log('server app listening on port '+port);
+  console.log('client app running on http://localhost:'+port+'/static/client/app.html');
 });
 
 ////////////////////////////////////////////////////

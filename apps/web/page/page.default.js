@@ -1,5 +1,5 @@
 function parseHTML(code) {
-  if (typeof window.jQuery !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof window.jQuery !== 'undefined') {
     var parser = new DOMParser();
     var doc = parser.parseFromString(code, "text/html");
 
@@ -17,7 +17,7 @@ function parseHTML(code) {
   }
   else {
 	  var cheerio = require('cheerio');
-	  return cheerio.load(content);
+	  return cheerio.load(code);
   }
 }
 
