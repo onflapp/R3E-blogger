@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {{include "." "web/page/admin" "head"}}
+</head>
+
+<body>
+
+  <div class="container">
+    {{include "." "web/page/admin" "breadcrumb"}}
+    {{include "." "web/page/admin" "toolbar"}}
+    <hr>
+  </div>
+
+  <div class="container">
+    <ul class="media-list">
+      {{#include "." "subpages"}}
+      <li class="media">
+        <div class="media-left">
+          <a href="{{C.P}}{{path}}{{C.X}}list">
+            <i class="media-object glyphicon glyphicon-file"></i>
+          </a>
+        </div>
+        <div class="media-body">
+          <h4 class="media-heading">{{name}}</h4>
+          {{path}}
+          {{include path "list-actions"}} 
+        </div>
+      </li>
+      {{/include}}
+    </ul>
+  </div>
+</body>
+
+</html>

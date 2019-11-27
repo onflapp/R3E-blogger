@@ -1,0 +1,17 @@
+<style>
+  div.comp-image img {
+    height: 100%;
+  }
+
+  div.comp-image.full-width img {
+    width: 100%;
+    height: initial;
+  }
+
+  div.comp-image {
+    overflow: hidden;
+  }
+</style>
+<div class="comp-image {{_.fullwidth}}" style="{{val _.height "height:%spx;"}}">
+  <img src="{{path}}/{{_.href}}">
+</div>

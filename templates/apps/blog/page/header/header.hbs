@@ -1,0 +1,25 @@
+    <div class="container-fluid">
+
+      <!-- Jumbotron -->
+      <div class="jumbotron" data-content="pagecontent/head.html">
+        <h1 >Marketing stuff!</h1>
+        <p class="lead">Cras justo odio, dapibus ac facilisis in, egestas eget quam. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet.</p>
+        <p><a class="btn btn-lg btn-success" href="#" role="button">Get started today</a></p>
+      </div>
+
+      <nav>
+      
+        <ul class="nav nav-justified">
+      {{#include "/content/blog" "children"}}
+          <li><a href="{{path}}">{{name}}</a></li>
+      {{/include}}
+        </ul>
+      </nav>
+
+      <ol class="breadcrumb">
+      {{#include "." "parents"}}
+        <li><a href="{{path}}">{{name}}</a></li>
+      {{/include}}
+        <li class="active"><span>{{R.NAME}}</span></li>
+      </ol>
+    </div>

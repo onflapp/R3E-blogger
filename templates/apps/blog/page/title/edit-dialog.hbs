@@ -1,0 +1,24 @@
+          <h5>Title</h5>
+          <form class="form-inline" method="post" enctype="multipart/form-data" action="{{C.P}}{{R.PATH}}">
+            <div class="form-group">
+              <input class="form-control" name="title" value="{{_.title}}" autocomplete="off" placeholder="file name">
+              <input type="hidden" name=":forward" value="{{R.REF_URL}}">
+
+              <select class="form-control" name="tag">
+                <option value="h1">H1</option>
+                <option value="h2">H2</option>
+                <option value="h3">H3</option>
+                <option value="h4">H4</option>
+              </select>
+
+              <select class="form-control" name="align">
+                <option value="">left</option>
+                <option value="align-center">center</option>
+                <option value="align-right">right</option>
+              </select>
+
+              <button class="form-control btn btn-success" type="submit">
+                <span class="glyphicon glyphicon-plus"></span>
+              </button>
+            </div>
+          </form>

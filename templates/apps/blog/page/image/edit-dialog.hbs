@@ -1,0 +1,31 @@
+          <h5>Upload File</h5>
+          <form class="form-inline" method="post" enctype="multipart/form-data" action="{{C.P}}{{R.PATH_APPEND}}{:name}">
+            <div class="form-group">
+              <input class="form-control" type="file" name=":filename" value="">
+              <input class="form-control" name=":name|:filename|newUUID" value="" autocomplete="off" placeholder="file name">
+              <input type="hidden" name="../href@:name" value="" autocomplete="off" placeholder="file name">
+              <input type="hidden" name=":forward" value="{{R.REF_URL}}">
+
+              <button class="form-control btn btn-success" type="submit">
+                <span class="glyphicon glyphicon-plus"></span>
+              </button>
+
+            </div>
+          </form>
+
+          <h5>Change Format</h5>
+          <form class="form-inline" method="post" enctype="multipart/form-data" action="{{C.P}}{{R.PATH}}">
+            <div class="form-group">
+              <input type="hidden" name=":forward" value="{{R.REF_URL}}">
+
+              <input name="fullwidth" value="full-width" type="checkbox" {{val _.fullwidth "checked"}}>full width
+              <input name="fullwidth" value="" type="hidden">
+
+              <input name="height" value="{{_.height}}" type="text"> height
+
+              <button class="form-control btn btn-success" type="submit">
+                <span class="glyphicon glyphicon-plus"></span>
+              </button>
+
+            </div>
+          </form>

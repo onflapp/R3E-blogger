@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {{include "." "web/page/admin" "head"}}  
+</head>
+
+<body>
+
+  <div role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <a class="close" href="{{R.REF_URL}}"><span aria-hidden="true">&times;</span></a>
+          <h4 class="modal-title">Edit Component</h4>
+        </div>
+        <div class="modal-body">
+
+
+          <ol class="breadcrumb">
+            <li class="active">HOME</li>
+            {{#include "." "parents"}}
+              <li class="active">{{name}}</li>
+            {{/include}}
+            <li>{{R.NAME}}</li>
+          </ol>
+
+          {{include "." "edit-dialog"}}
+
+        </div>
+        <div class="modal-footer">
+          <a class="btn btn-default" href="{{R.REF_URL}}">Cancel</a>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+
+</body>
+
+</html>

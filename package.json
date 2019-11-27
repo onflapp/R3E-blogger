@@ -23,6 +23,7 @@
     "fs-extra": "^5.0.0",
     "github-api": "^3.2.0",
     "handlebars": "^4.0.11",
+    "htl-compiler": "^1.0.12",    
     "isomorphic-fetch": "^2.2.1",
     "markdown-it": "^8.4.1",
     "mime-types": "^2.1.18",

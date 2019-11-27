@@ -1,5 +1,10 @@
 /**/
 
+[data-editable] {
+	outline: 1px solid red;
+  min-height: 20px;
+}
+
 [data-content] {
 	outline: 1px solid red;
 }
@@ -7,8 +12,33 @@
 	outline: 1px solid red;
 }
 
+.container-item {
+  padding: 10px;
+}
+
 #mce-menubar {
   background: green;
   position: fixed;
   top: 0px;
 }
+
+.selected {
+  opacity: 0.5;
+}
+
+.filler-over-before {
+	border-top: 4px red solid;
+	border-right: 2px red solid;
+	border-left: 2px red solid;
+}
+
+.filler-over-after {
+	border-bottom: 4px red solid;
+	border-right: 2px red solid;
+	border-left: 2px red solid;
+}
+
+.container-item.filler-over {
+	outline: 3px solid red;
+}
+

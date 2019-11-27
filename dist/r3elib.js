@@ -20,6 +20,31 @@ var Utils = (function () {
         });
         return uuid;
     };
+    Utils.listSortByNames = function (list, names) {
+        var rv = [];
+        var done = {};
+        for (var i = 0; i < names.length; i++) {
+            var x = list.indexOf(names[i]);
+            if (x != -1) {
+                rv.push(list[x]);
+                done[names[i]] = 'y';
+            }
+        }
+        for (var i = 0; i < list.length; i++) {
+            if (!done[list[i]])
+                rv.push(list[i]);
+        }
+        return rv;
+    };
+    Utils.listRemoveNames = function (list, names) {
+        var rv = [];
+        for (var i = 0; i < list.length; i++) {
+            if (names.indexOf(list[i]) === -1) {
+                rv.push(list[i]);
+            }
+        }
+        return rv;
+    };
     Utils.listMoveItem = function (list, item, ref, offset) {
         var x = 0;
         var v = list.indexOf(item);
@@ -158,6 +183,8 @@ var Utils = (function () {
             return 'image/gif';
         if (ext === 'txt')
             return 'text/plain';
+        if (ext === 'pdf')
+            return 'application/pdf';
         if (ext === 'html' || ext === 'htm')
             return 'text/html';
         if (ext === 'xml')
@@ -319,7 +346,6 @@ var Data = (function () {
         var rt = this.values['_rt'];
         if (rt)
             rv.push(rt);
-        rv.push('any');
         return rv;
     };
     Data.prototype.wrap = function (wrapper) {
@@ -701,14 +727,12 @@ var ResourceRenderer = (function () {
         this.makeRenderTypePatterns = function (factoryType, renderType, name, sel) {
             var rv = [];
             var p = renderType + '/' + name + '.' + sel;
-            if (factoryType !== sel) {
-                rv.push(p + '.' + factoryType);
-                p = renderType + '/' + sel;
-                rv.push(p + '.' + factoryType);
+            if (sel === 'default') {
+                rv.push(renderType + '/' + name + '.' + factoryType);
             }
-            else {
-                rv.push(p);
-            }
+            rv.push(p + '.' + factoryType);
+            p = renderType + '/' + sel;
+            rv.push(p + '.' + factoryType);
             return rv;
         };
     }
@@ -733,8 +757,8 @@ var ResourceRenderer = (function () {
         }
         return rv;
     };
-    ResourceRenderer.prototype.makeRenderingFunction = function (path, resource, callback) {
-        var ext = Utils.filename_ext(path);
+    ResourceRenderer.prototype.makeRenderingFunction = function (resource, callback) {
+        var ext = Utils.filename_ext(resource.getName());
         var fact = this.rendererFactories.get(ext);
         fact.makeRenderer(resource, callback);
     };
@@ -784,7 +808,7 @@ var ResourceRenderer = (function () {
             self.rendererResolver.resolveResource(p, function (rend) {
                 if (rend) {
                     if (rend.isContentResource()) {
-                        self.makeRenderingFunction(p, rend, callback);
+                        self.makeRenderingFunction(rend, callback);
                     }
                     else {
                         callback(null, new Error('no ContentResource at path :' + p));
@@ -829,21 +853,22 @@ var ResourceRequestContext = (function () {
         if (dplus !== '/')
             dplus = dplus + '/';
         p['DATA_PATH_APPEND'] = dplus;
-        if (this.pathInfo.referer) {
+        if (this.pathInfo.refererURL) {
+            p['REF_URL'] = this.pathInfo.refererURL;
             p['REF_PATH'] = this.pathInfo.referer.path;
             if (this.pathInfo.referer.suffix)
                 p['REF_SUFFIX'] = this.pathInfo.referer.suffix;
         }
         return p;
     };
-    ResourceRequestContext.prototype._setCurrentResourcePath = function (rpath) {
-        this.pathInfo.resourcePath = rpath;
+    ResourceRequestContext.prototype.__overrideCurrentResourcePath = function (resourcePath) {
+        this.pathInfo.resourcePath = resourcePath;
     };
-    ResourceRequestContext.prototype._setCurrentSelector = function (sel) {
-        this.pathInfo.selector = sel;
+    ResourceRequestContext.prototype.__overrideCurrentSelector = function (selector) {
+        this.pathInfo.selector = selector;
     };
-    ResourceRequestContext.prototype._getCurrentRenderResourceType = function (rpath) {
-        this.renderResourceType = rpath;
+    ResourceRequestContext.prototype.__overrideCurrentRenderResourceType = function (rstype) {
+        this.renderResourceType = rstype;
     };
     ResourceRequestContext.prototype.getCurrentSelector = function () {
         return this.pathInfo.selector;
@@ -851,14 +876,17 @@ var ResourceRequestContext = (function () {
     ResourceRequestContext.prototype.getCurrentResourcePath = function () {
         return this.pathInfo.resourcePath;
     };
+    ResourceRequestContext.prototype.getCurrentRequestPath = function () {
+        return this.pathInfo.path;
+    };
     ResourceRequestContext.prototype.getCurrentDataPath = function () {
         return this.pathInfo.dataPath;
     };
     ResourceRequestContext.prototype.getCurrentRenderResourceType = function () {
         return this.renderResourceType;
     };
-    ResourceRequestContext.prototype.renderResource = function (resourcePath, rstype, selector, context, callback) {
-        this.resourceRequestHandler.renderResource(resourcePath, rstype, selector, context, callback);
+    ResourceRequestContext.prototype.renderResource = function (resourcePath, rstype, selector, callback) {
+        this.resourceRequestHandler.renderResource(resourcePath, rstype, selector, this, callback);
     };
     ResourceRequestContext.prototype.resolveResource = function (resourcePath, callback) {
         var rres = this.getResourceResolver();
@@ -948,6 +976,7 @@ var PathInfo = (function () {
         pi.resourcePath = this.resourcePath;
         pi.referer = this.referer;
         pi.query = this.query;
+        pi.refererURL = this.refererURL;
         return pi;
     };
     return PathInfo;
@@ -1021,13 +1050,36 @@ var ResourceRequestHandler = (function (_super) {
                 }
             }
         }
+        for (var key in data) {
+            var val = data[key];
+            if (key.indexOf('@') !== -1) {
+                var i_1 = key.indexOf('@');
+                var k = key.substr(0, i_1);
+                var n = key.substr(i_1 + 1);
+                if (data[n]) {
+                    data[k] = data[n];
+                }
+                else {
+                    data[k] = data[key];
+                }
+                delete data[key];
+            }
+        }
         return data;
     };
-    ResourceRequestHandler.prototype.transformData = function (data, context, callback) {
+    ResourceRequestHandler.prototype.transformObject = function (object, rstype, selector, context, callback) {
+        var data = new Data(object).wrap({
+            getRenderTypes: function () {
+                return [rstype];
+            }
+        });
+        this.transformResource(data, selector, context, callback);
+    };
+    ResourceRequestHandler.prototype.transformResource = function (data, selector, context, callback) {
         var rrend = this.resourceRenderer;
-        var selectors = ['store'];
+        var selectors = [selector];
         var renderTypes = data.getRenderTypes();
-        data.values = this.expandValues(data.values, data.values);
+        renderTypes.push('any');
         rrend.resolveRenderer(renderTypes, selectors, function (rend, error) {
             if (rend) {
                 rend(data, new ContentWriterAdapter('object', callback), context);
@@ -1040,6 +1092,7 @@ var ResourceRequestHandler = (function (_super) {
     ResourceRequestHandler.prototype.makeContext = function (pathInfo) {
         if (!pathInfo)
             return null;
+        pathInfo.refererURL = this.refererPath;
         pathInfo.referer = this.parsePath(this.refererPath);
         pathInfo.query = this.queryProperties;
         var context = new ResourceRequestContext(pathInfo, this);
@@ -1108,7 +1161,8 @@ var ResourceRequestHandler = (function (_super) {
         }
         for (var key in datas) {
             var v = datas[key];
-            rres.storeResource(key, new Data(v), function () {
+            var p = Utils.absolute_path(key);
+            rres.storeResource(p, new Data(v), function () {
                 count--;
                 if (count === 0) {
                     callback();
@@ -1185,6 +1239,7 @@ var ResourceRequestHandler = (function (_super) {
     ResourceRequestHandler.prototype.renderRequest = function (rpath) {
         var rres = this.resourceResolver;
         var rrend = this.resourceRenderer;
+        var self = this;
         if (!rres)
             throw new Error('no resource resolver');
         if (!rrend)
@@ -1198,13 +1253,13 @@ var ResourceRequestHandler = (function (_super) {
         try {
             if (info) {
                 rres.resolveResource(info.resourcePath, function (res) {
-                    if (res)
-                        rrend.renderResource(res, sel, out, context);
-                    else {
-                        var res_1 = new NotFoundResource(info.resourcePath);
-                        rrend.renderResource(res_1, sel, out, context);
+                    if (!res) {
+                        res = new NotFoundResource(info.resourcePath);
                     }
-                    out.end(null);
+                    self.transformResource(res, 'pre-render', context, function () {
+                        rrend.renderResource(res, sel, out, context);
+                        out.end(null);
+                    });
                 });
             }
             else {
@@ -1224,16 +1279,17 @@ var ResourceRequestHandler = (function (_super) {
         var rrend = this.resourceRenderer;
         var ncontext = context.clone();
         var sel = selector ? selector : 'default';
-        ncontext._setCurrentResourcePath(resourcePath);
-        ncontext._getCurrentRenderResourceType(rstype);
+        ncontext.__overrideCurrentResourcePath(resourcePath);
+        ncontext.__overrideCurrentRenderResourceType(rstype);
+        ncontext.__overrideCurrentSelector(selector);
         try {
             if (resourcePath) {
                 rres.resolveResource(resourcePath, function (res) {
                     if (res)
                         rrend.renderResource(res, sel, out, ncontext);
                     else {
-                        var res_2 = new NotFoundResource(resourcePath);
-                        rrend.renderResource(res_2, sel, out, ncontext);
+                        var res_1 = new NotFoundResource(resourcePath);
+                        rrend.renderResource(res_1, sel, out, ncontext);
                     }
                 });
             }
@@ -1259,7 +1315,9 @@ var ResourceRequestHandler = (function (_super) {
             out.end(null);
         };
         if (context && info && info.resourcePath) {
-            self.transformData(new Data(data), context, function (ddata) {
+            var tdata = new Data(data);
+            tdata.values = this.expandValues(tdata.values, tdata.values);
+            self.transformResource(tdata, 'pre-store', context, function (ddata) {
                 var storeto = Utils.absolute_path(ddata.values[':storeto']);
                 if (!storeto)
                     storeto = info.resourcePath;
@@ -1292,21 +1350,34 @@ var ResourceRequestHandler = (function (_super) {
     ResourceRequestHandler.prototype.storeResource = function (resourcePath, data, callback) {
         var self = this;
         var rres = this.resourceResolver;
+        var storedata = function (path) {
+            self.expandDataAndStore(path, data, function () {
+                self.dispatchAllEventsAsync('stored', path, data);
+                callback();
+            });
+        };
         try {
             var remove_1 = Utils.absolute_path(data[':delete']);
-            var copyto = Utils.absolute_path(data[':copyto']);
-            var moveto = Utils.absolute_path(data[':moveto']);
+            var copyto_1 = Utils.absolute_path(data[':copyto']);
+            var copyfrom = Utils.absolute_path(data[':copyfrom']);
+            var moveto_1 = Utils.absolute_path(data[':moveto']);
             var importto = Utils.absolute_path(data[':import']);
-            if (copyto) {
-                rres.copyResource(resourcePath, copyto, function () {
-                    self.dispatchAllEventsAsync('stored', resourcePath, data);
-                    callback();
+            if (copyto_1) {
+                rres.copyResource(resourcePath, copyto_1, function () {
+                    self.dispatchAllEventsAsync('stored', copyto_1, data);
+                    storedata(copyto_1);
                 });
             }
-            else if (moveto) {
-                rres.moveResource(resourcePath, moveto, function () {
+            else if (copyfrom) {
+                rres.copyResource(copyfrom, resourcePath, function () {
                     self.dispatchAllEventsAsync('stored', resourcePath, data);
-                    callback();
+                    storedata(resourcePath);
+                });
+            }
+            else if (moveto_1) {
+                rres.moveResource(resourcePath, moveto_1, function () {
+                    self.dispatchAllEventsAsync('stored', moveto_1, data);
+                    storedata(moveto_1);
                 });
             }
             else if (remove_1) {
@@ -1318,14 +1389,11 @@ var ResourceRequestHandler = (function (_super) {
             else if (importto) {
                 self.expandDataAndImport(resourcePath, data, function () {
                     self.dispatchAllEventsAsync('stored', resourcePath, data);
-                    callback();
+                    storedata(resourcePath);
                 });
             }
             else {
-                self.expandDataAndStore(resourcePath, data, function () {
-                    self.dispatchAllEventsAsync('stored', resourcePath, data);
-                    callback();
-                });
+                storedata(resourcePath);
             }
         }
         catch (ex) {
@@ -1884,16 +1952,33 @@ var TemplateRendererFactory = (function () {
                     var map = context.makeContextMap(data);
                     map['_session'] = session_1;
                     map['_context'] = context;
-                    try {
-                        var txt = tfunc_1(map);
+                    var render_ouput = function (txt) {
                         session_1.replaceOutputPlaceholders(txt, function (txt) {
                             writer.start('text/html');
                             writer.write(txt);
                             writer.end(null);
                         });
+                    };
+                    if (typeof tfunc_1 === 'function') {
+                        try {
+                            var txt = tfunc_1(map);
+                            render_ouput(txt);
+                        }
+                        catch (ex) {
+                            callback(null, ex);
+                        }
                     }
-                    catch (ex) {
-                        callback(null, ex);
+                    else if (typeof tfunc_1.callback === 'function') {
+                        tfunc_1.callback(map, function (txt, error) {
+                            if (txt)
+                                render_ouput(txt);
+                            else
+                                callback(null, error);
+                        });
+                    }
+                    else {
+                        console.log(tfunc_1);
+                        callback(null, new Error('invlid renderer function'));
                     }
                 });
             }
@@ -2071,7 +2156,7 @@ var HBSRendererFactory = (function (_super) {
             var p = session.makeOutputPlaceholder();
             if (typeof path === 'string') {
                 path = self.expadPath(path, context);
-                context.renderResource(path, rtype, selector, context, render);
+                context.renderResource(path, rtype, selector, render);
             }
             else {
                 render('object/javascript', path);
@@ -2080,129 +2165,9 @@ var HBSRendererFactory = (function (_super) {
         };
         _this.Handlebars.registerHelper('include', include);
         _this.Handlebars.registerHelper('include-safe', include);
-        _this.Handlebars.registerHelper('p', function (val, options) {
-            if (typeof val === 'object') {
-                return JSON.stringify(val);
-            }
-            else {
-                return val;
-            }
-        });
-        _this.Handlebars.registerHelper('or', function () {
-            var args = arguments;
-            for (var i in args) {
-                if (args[i] !== null && args[i] !== undefined)
-                    return args[i];
-            }
-        });
-        _this.Handlebars.registerHelper('eq', function (lvalue, rvalue, result, options) {
-            if (lvalue === rvalue)
-                return result;
-            else
-                return null;
-        });
-        _this.Handlebars.registerHelper('prop', function (path, block) {
-            var context = block.data.root._context;
-            var session = block.data.root._session;
-            if (path.charAt(0) !== '/')
-                path = self.expadPath(path, context);
-            var name = Utils.filename(path);
-            var base = Utils.filename_dir(path);
-            var p = session.makeOutputPlaceholder();
-            context.resolveResource(base, function (res) {
-                if (res) {
-                    var val = res.getProperty(name);
-                    p.write(val ? val : '');
-                    p.end();
-                }
-                else {
-                    p.write('non');
-                    p.end();
-                }
-            });
-            return new self.Handlebars.SafeString(p.placeholder);
-        });
-        _this.Handlebars.registerHelper('match', function (lvalue, operator, rvalue, options) {
-            var operators = null;
-            var result = null;
-            if (arguments.length < 3) {
-                if (lvalue) {
-                    operator.data.root._match_rval = true;
-                    return operator.fn(this);
-                }
-                else
-                    return operator.inverse(this);
-            }
-            if (options === undefined) {
-                options = rvalue;
-                rvalue = operator;
-                operator = "===";
-            }
-            operators = {
-                '==': function (l, r) {
-                    return l == r;
-                },
-                '===': function (l, r) {
-                    return l === r;
-                },
-                '!=': function (l, r) {
-                    return l != r;
-                },
-                '!==': function (l, r) {
-                    return l !== r;
-                },
-                '<': function (l, r) {
-                    return l < r;
-                },
-                '>': function (l, r) {
-                    return l > r;
-                },
-                '<=': function (l, r) {
-                    return l <= r;
-                },
-                '>=': function (l, r) {
-                    return l >= r;
-                },
-                'startsWith': function (l, r) {
-                    if (l && l.indexOf(r) === 0)
-                        return true;
-                    else
-                        return false;
-                },
-                '!startsWith': function (l, r) {
-                    if (l && l.indexOf(r) === 0)
-                        return false;
-                    else
-                        return true;
-                },
-                'typeof': function (l, r) {
-                    return typeof l == r;
-                }
-            };
-            if (!operators[operator]) {
-                throw new Error("Handlerbars Helper 'compare' doesn't know the operator " + operator);
-            }
-            result = operators[operator](lvalue, rvalue);
-            if (result)
-                options.data.root._match_rval = true;
-            if (result)
-                return options.fn(this);
-            else
-                return options.inverse(this);
-        });
-        _this.Handlebars.registerHelper('default', function (options) {
-            var result = false;
-            if (options.data.root._match_rval)
-                result = true;
-            delete options.data.root._match_rval;
-            if (!result)
-                return options.fn(this);
-            else
-                return options.inverse(this);
-        });
         _this.Handlebars.registerHelper('dump', function (block) {
             var rv = {};
-            var context = block.data.root;
+            var context = block['data'] ? block.data.root : block;
             for (var key in context) {
                 var val = context[key];
                 if (key === '_') {
@@ -2676,8 +2641,6 @@ var DOMContentWriter = (function () {
                 var v = window['__myevents'][i];
                 window.removeEventListener(v.event, v.func, v.cap);
             }
-            window['__myevents'] = [];
-            return;
         }
         window['__myevents'] = [];
         if (!window['orig_addEventListener']) {
@@ -2784,23 +2747,6 @@ var DOMContentWriter = (function () {
         }
         trigger_done();
     };
-    DOMContentWriter.prototype.compareElements = function (lista, listb) {
-        var rv = [];
-        for (var i = 0; i < lista.length; i++) {
-            var itema = lista[i];
-            var found = false;
-            for (var z = 0; z < listb.length; z++) {
-                var itemb = listb[z];
-                if (itemb.isEqualNode(itema)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-                rv.push(itema);
-        }
-        return rv;
-    };
     DOMContentWriter.prototype.updateDocument = function (content) {
         var self = this;
         this.patchWindowObjects();
@@ -2883,6 +2829,9 @@ var ClientRequestHandler = (function (_super) {
         this.renderRequest(rpath);
     };
     ClientRequestHandler.prototype.renderRequest = function (rpath) {
+        if (rpath != this.currentPath) {
+            this.refererPath = this.currentPath;
+        }
         this.currentPath = rpath;
         location.hash = rpath;
         _super.prototype.renderRequest.call(this, rpath);
@@ -3030,6 +2979,13 @@ var ServerRequestHandler = (function (_super) {
         var multiparty = require('multiparty');
         var querystring = require('querystring');
         var referer = req.headers.referrer || req.headers.referer;
+        var first_val = function (val) {
+            for (var i = 0; i < val.length; i++) {
+                if (val[i])
+                    return val[i];
+            }
+            return val[val.length - 1];
+        };
         if (referer) {
             var r = new URL(referer);
             this.refererPath = r.pathname;
@@ -3090,7 +3046,7 @@ var ServerRequestHandler = (function (_super) {
                         break;
                 }
                 for (var k in fields) {
-                    var v = fields[k][0];
+                    var v = first_val(fields[k]);
                     data[k] = v;
                 }
                 data = self.transformValues(data);
@@ -3111,7 +3067,7 @@ var ServerRequestHandler = (function (_super) {
                 for (var k in fields) {
                     var v = fields[k];
                     if (Array.isArray(v))
-                        data[k] = v[0];
+                        data[k] = first_val(v);
                     else
                         data[k] = v;
                 }
@@ -4139,6 +4095,29 @@ var GitHubResource = (function (_super) {
     };
     return GitHubResource;
 }(StoredResource));
+var HTMLParser = (function () {
+    function HTMLParser() {
+    }
+    HTMLParser.parse = function (code) {
+        if (typeof window !== 'undefined' && typeof window['jQuery'] !== 'undefined') {
+            var parser = new DOMParser();
+            var doc_1 = parser.parseFromString(code, "text/html");
+            var jq = function (sel) {
+                return window['jQuery'](sel, doc_1);
+            };
+            jq['html'] = function () {
+                var ser = new XMLSerializer();
+                return ser.serializeToString(doc_1);
+            };
+            return jq;
+        }
+        else {
+            var cheerio = require('cheerio');
+            return cheerio.load(code);
+        }
+    };
+    return HTMLParser;
+}());
 if (typeof module !== 'undefined') {
     module.exports = {
         ServerRequestHandler: ServerRequestHandler,

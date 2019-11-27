@@ -7,21 +7,23 @@ var l = require('./dist/exports');
 
 var port = Number.parseInt(process.env.PORT) || 3000;
 
-var content = new r.FileResource('./content');
 var system = new r.FileResource('./dist/templates');
-var apps = new r.FileResource('./apps').wrap({
+var content = new r.FileResource('./content');
+var user = new r.FileResource('./templates/user');
+var apps = new r.FileResource('./templates/apps').wrap({
 	getSuperType: function() { return 'resource/templates'; }
 });
 
 var repos = {
   'content':content,
   'system-templates':system,
-  'user-templates':apps
+  'apps-templates':apps,
+  'user-templates':user
 }
 
 var config = {
   'X': '.x-',
-  'USER_TEMPLATES':'/user-templates',
+  'USER_TEMPLATES':'/apps-templates',
   'BOOTSTRAP_CSS': 'https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css',
   'CODEMIRROR_JS': 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.43.0/codemirror.min.js',
   'CODEMIRROR_CSS': 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.43.0/codemirror.min.css',
@@ -67,7 +69,7 @@ if (process.env.POUCHDB) {
 
 var root = new r.RootResource(repos);
 var rres = new r.ResourceResolver(root);
-var rtmp = new r.MultiResourceResolver([apps, system]);
+var rtmp = new r.MultiResourceResolver([apps, user, system]);
 
 //start pouchdb database server
 if (process.env.POUCHDB_SERVER) {
@@ -102,23 +104,28 @@ app.use("/dist", express.static(__dirname+'/dist'));
 //GET/POST REST handlers
 app.get('/*', function(req, res) {
 	var handler = new r.ServerRequestHandler(rres, rtmp, res);
+  var hbs = new r.HBSRendererFactory();
 
 	handler.setConfigProperties(config);
 	handler.registerFactory('js', new r.JSRendererFactory());
-	handler.registerFactory('hbs', new r.HBSRendererFactory());
-	handler.registerFactory('html', new r.HBSRendererFactory());
+	handler.registerFactory('hbs', hbs);
 
-	handler.handleGetRequest(req);
+  handler.transformObject(hbs, 'factory/hbs', 'init-helpers', null, function() { 
+	  handler.handleGetRequest(req);
+  });
 });
 
 app.post('/*', function(req, res) {
 	var handler = new r.ServerRequestHandler(rres, rtmp, res);
+  var hbs = new r.HBSRendererFactory();
 
 	handler.setConfigProperties(config);
 	handler.registerFactory('js', new r.JSRendererFactory());
-	handler.registerFactory('hbs', new r.HBSRendererFactory());
+	handler.registerFactory('hbs', hbs);
 
-	handler.handlePostRequest(req);
+  handler.transformObject(hbs, 'factory/hbs', 'init-helpers', null, function() { 
+	  handler.handlePostRequest(req);
+  });
 });
 
 app.listen(port, function() {
